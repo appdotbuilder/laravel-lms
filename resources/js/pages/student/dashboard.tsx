@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import { AppShell } from '@/components/app-shell';
+import { SidebarDemo } from '@/components/sidebar-demo';
 
 interface Props {
     stats: {
@@ -240,6 +241,11 @@ export default function StudentDashboard({ stats, activeCourses, recommendedCour
                             </div>
                         </div>
                     </div>
+                </div>
+
+                {/* Dynamic Sidebar Demo */}
+                <div>
+                    <SidebarDemo />
                 </div>
             </div>
         </AppShell>

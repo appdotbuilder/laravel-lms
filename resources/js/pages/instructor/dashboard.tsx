@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import { AppShell } from '@/components/app-shell';
+import { SidebarDemo } from '@/components/sidebar-demo';
 
 interface Props {
     stats: {
@@ -257,6 +258,11 @@ export default function InstructorDashboard({ stats, courses, revenueData }: Pro
                             <div className="text-xs text-gray-500 dark:text-gray-400">Get paid</div>
                         </button>
                     </div>
+                </div>
+
+                {/* Dynamic Sidebar Demo */}
+                <div>
+                    <SidebarDemo />
                 </div>
             </div>
         </AppShell>

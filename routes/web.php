@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\SidebarController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -16,6 +17,9 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    
+    // Sidebar API endpoint
+    Route::get('/api/sidebar-menu', [SidebarController::class, 'index'])->name('sidebar.menu');
 });
 
 require __DIR__.'/settings.php';

@@ -1,5 +1,5 @@
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
-import { RoleBasedSidebar } from '@/components/role-based-sidebar';
+import { DynamicSidebar } from '@/components/dynamic-sidebar';
 import { SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
 
@@ -18,7 +18,7 @@ export function AppShell({ children, variant = 'sidebar' }: AppShellProps) {
 
     return (
         <SidebarProvider defaultOpen={isOpen}>
-            <RoleBasedSidebar />
+            <DynamicSidebar />
             <SidebarInset>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-6">
                     {children}
