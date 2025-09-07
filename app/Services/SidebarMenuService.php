@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Course;
 use App\Models\CourseReview;
+use App\Models\Enrollment;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
@@ -12,7 +13,12 @@ use Illuminate\Support\Facades\Auth;
 class SidebarMenuService
 {
     /**
-     * Get menu items for the authenticated user based on their role.
+     * Cache duration in seconds (5 minutes).
+     */
+    private const CACHE_DURATION = 300;
+
+    /**
+     * Get menu items for the authenticated user.
      *
      * @return array
      */
@@ -24,9 +30,9 @@ class SidebarMenuService
             return [];
         }
 
-        $cacheKey = "sidebar_menu_{$user->id}_{$user->role}";
-        
-        return Cache::remember($cacheKey, 300, function () use ($user) { // 5 minutes cache
+        $cacheKey = "sidebar_menu_user_{$user->id}";
+
+        return Cache::remember($cacheKey, self::CACHE_DURATION, function () use ($user) {
             return match ($user->role) {
                 'admin' => $this->buildAdminMenu($user),
                 'instructor' => $this->buildInstructorMenu($user),
@@ -39,7 +45,7 @@ class SidebarMenuService
     /**
      * Build admin menu structure.
      *
-     * @param  \App\Models\User  $user
+     * @param User $user
      * @return array
      */
     protected function buildAdminMenu(User $user): array
@@ -47,126 +53,93 @@ class SidebarMenuService
         return [
             [
                 'type' => 'group',
-                'title' => 'Admin Dashboard',
+                'label' => 'Administration',
                 'items' => [
                     [
                         'type' => 'item',
-                        'title' => 'Overview',
-                        'url' => '/admin/dashboard',
+                        'label' => 'Dashboard',
+                        'href' => '/admin/dashboard',
                         'icon' => 'LayoutDashboard',
-                        'isActive' => request()->is('admin/dashboard')
+                        'isActive' => request()->is('admin/dashboard*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Analytics',
-                        'url' => '/admin/analytics',
-                        'icon' => 'BarChart3',
-                        'isActive' => request()->is('admin/analytics')
-                    ]
-                ]
-            ],
-            [
-                'type' => 'group',
-                'title' => 'Content Management',
-                'items' => [
-                    [
-                        'type' => 'item',
-                        'title' => 'Courses',
-                        'url' => '/admin/courses',
-                        'icon' => 'BookOpen',
+                        'label' => 'Approval Queue',
+                        'href' => '/admin/approvals',
+                        'icon' => 'CheckCircle',
                         'badge' => $this->getPendingCourseCount(),
-                        'isActive' => request()->is('admin/courses*')
+                        'isActive' => request()->is('admin/approvals*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Categories',
-                        'url' => '/admin/categories',
-                        'icon' => 'Folder',
-                        'isActive' => request()->is('admin/categories*')
-                    ],
-                    [
-                        'type' => 'item',
-                        'title' => 'Reviews',
-                        'url' => '/admin/reviews',
-                        'icon' => 'Star',
-                        'isActive' => request()->is('admin/reviews*')
-                    ]
-                ]
-            ],
-            [
-                'type' => 'group',
-                'title' => 'User Management',
-                'items' => [
-                    [
-                        'type' => 'item',
-                        'title' => 'All Users',
-                        'url' => '/admin/users',
+                        'label' => 'Instructors',
+                        'href' => '/admin/instructors',
                         'icon' => 'Users',
-                        'isActive' => request()->is('admin/users*')
-                    ],
-                    [
-                        'type' => 'item',
-                        'title' => 'Instructors',
-                        'url' => '/admin/instructors',
-                        'icon' => 'GraduationCap',
                         'badge' => $this->getPendingInstructorCount(),
                         'isActive' => request()->is('admin/instructors*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Students',
-                        'url' => '/admin/students',
-                        'icon' => 'UserCheck',
-                        'isActive' => request()->is('admin/students*')
-                    ]
-                ]
-            ],
-            [
-                'type' => 'group',
-                'title' => 'Finance',
-                'items' => [
-                    [
-                        'type' => 'item',
-                        'title' => 'Transactions',
-                        'url' => '/admin/transactions',
-                        'icon' => 'CreditCard',
-                        'isActive' => request()->is('admin/transactions*')
-                    ],
-                    [
-                        'type' => 'item',
-                        'title' => 'Payouts',
-                        'url' => '/admin/payouts',
+                        'label' => 'Payouts',
+                        'href' => '/admin/payouts',
                         'icon' => 'DollarSign',
                         'badge' => $this->getPendingPayoutCount(),
                         'isActive' => request()->is('admin/payouts*')
-                    ],
-                    [
-                        'type' => 'item',
-                        'title' => 'Revenue Reports',
-                        'url' => '/admin/revenue',
-                        'icon' => 'TrendingUp',
-                        'isActive' => request()->is('admin/revenue*')
                     ]
                 ]
             ],
             [
                 'type' => 'group',
-                'title' => 'System',
+                'label' => 'System',
                 'items' => [
                     [
                         'type' => 'item',
-                        'title' => 'Settings',
-                        'url' => '/admin/settings',
-                        'icon' => 'Settings',
-                        'isActive' => request()->is('admin/settings*')
+                        'label' => 'Users',
+                        'href' => '/admin/users',
+                        'icon' => 'UserCheck',
+                        'isActive' => request()->is('admin/users*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Notifications',
-                        'url' => '/admin/notifications',
+                        'label' => 'Courses',
+                        'href' => '/admin/courses',
+                        'icon' => 'BookOpen',
+                        'isActive' => request()->is('admin/courses*')
+                    ],
+                    [
+                        'type' => 'item',
+                        'label' => 'Categories',
+                        'href' => '/admin/categories',
+                        'icon' => 'Tags',
+                        'isActive' => request()->is('admin/categories*')
+                    ],
+                    [
+                        'type' => 'item',
+                        'label' => 'Analytics',
+                        'href' => '/admin/analytics',
+                        'icon' => 'BarChart3',
+                        'isActive' => request()->is('admin/analytics*')
+                    ]
+                ]
+            ],
+            [
+                'type' => 'group',
+                'label' => 'Personal',
+                'items' => [
+                    [
+                        'type' => 'item',
+                        'label' => 'Notifications',
+                        'href' => '/notifications',
                         'icon' => 'Bell',
                         'badge' => $this->getUnreadNotificationCount($user),
-                        'isActive' => request()->is('admin/notifications*')
+                        'isActive' => request()->is('notifications*')
+                    ],
+                    [
+                        'type' => 'item',
+                        'label' => 'Settings',
+                        'href' => '/settings',
+                        'icon' => 'Settings',
+                        'isActive' => request()->is('settings*')
                     ]
                 ]
             ]
@@ -176,7 +149,7 @@ class SidebarMenuService
     /**
      * Build instructor menu structure.
      *
-     * @param  \App\Models\User  $user
+     * @param User $user
      * @return array
      */
     protected function buildInstructorMenu(User $user): array
@@ -184,111 +157,92 @@ class SidebarMenuService
         return [
             [
                 'type' => 'group',
-                'title' => 'Instructor Dashboard',
+                'label' => 'Teaching',
                 'items' => [
                     [
                         'type' => 'item',
-                        'title' => 'Overview',
-                        'url' => '/instructor/dashboard',
+                        'label' => 'Dashboard',
+                        'href' => '/instructor/dashboard',
                         'icon' => 'LayoutDashboard',
-                        'isActive' => request()->is('instructor/dashboard')
+                        'isActive' => request()->is('instructor/dashboard*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Analytics',
-                        'url' => '/instructor/analytics',
-                        'icon' => 'BarChart3',
-                        'isActive' => request()->is('instructor/analytics')
-                    ]
-                ]
-            ],
-            [
-                'type' => 'group',
-                'title' => 'My Courses',
-                'items' => [
-                    [
-                        'type' => 'item',
-                        'title' => 'All Courses',
-                        'url' => '/instructor/courses',
+                        'label' => 'My Courses',
+                        'href' => '/instructor/courses',
                         'icon' => 'BookOpen',
                         'isActive' => request()->is('instructor/courses*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Create Course',
-                        'url' => '/instructor/courses/create',
+                        'label' => 'Create Course',
+                        'href' => '/instructor/courses/create',
                         'icon' => 'Plus',
-                        'isActive' => request()->is('instructor/courses/create')
+                        'isActive' => request()->is('instructor/courses/create*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Reviews',
-                        'url' => '/instructor/reviews',
+                        'label' => 'Students',
+                        'href' => '/instructor/students',
+                        'icon' => 'GraduationCap',
+                        'isActive' => request()->is('instructor/students*')
+                    ]
+                ]
+            ],
+            [
+                'type' => 'group',
+                'label' => 'Engagement',
+                'items' => [
+                    [
+                        'type' => 'item',
+                        'label' => 'Reviews',
+                        'href' => '/instructor/reviews',
                         'icon' => 'Star',
                         'badge' => $this->getUnreadReviewCount($user),
                         'isActive' => request()->is('instructor/reviews*')
-                    ]
-                ]
-            ],
-            [
-                'type' => 'group',
-                'title' => 'Students',
-                'items' => [
-                    [
-                        'type' => 'item',
-                        'title' => 'My Students',
-                        'url' => '/instructor/students',
-                        'icon' => 'Users',
-                        'isActive' => request()->is('instructor/students*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Messages',
-                        'url' => '/instructor/messages',
+                        'label' => 'Messages',
+                        'href' => '/instructor/messages',
                         'icon' => 'MessageCircle',
                         'badge' => $this->getUnreadMessageCount($user),
                         'isActive' => request()->is('instructor/messages*')
+                    ],
+                    [
+                        'type' => 'item',
+                        'label' => 'Analytics',
+                        'href' => '/instructor/analytics',
+                        'icon' => 'TrendingUp',
+                        'isActive' => request()->is('instructor/analytics*')
                     ]
                 ]
             ],
             [
                 'type' => 'group',
-                'title' => 'Earnings',
+                'label' => 'Personal',
                 'items' => [
                     [
                         'type' => 'item',
-                        'title' => 'Revenue',
-                        'url' => '/instructor/revenue',
+                        'label' => 'Earnings',
+                        'href' => '/instructor/earnings',
                         'icon' => 'DollarSign',
-                        'isActive' => request()->is('instructor/revenue*')
+                        'isActive' => request()->is('instructor/earnings*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Withdraw',
-                        'url' => '/instructor/withdraw',
-                        'icon' => 'CreditCard',
-                        'isActive' => request()->is('instructor/withdraw*')
-                    ]
-                ]
-            ],
-            [
-                'type' => 'group',
-                'title' => 'Account',
-                'items' => [
-                    [
-                        'type' => 'item',
-                        'title' => 'Profile',
-                        'url' => '/instructor/profile',
-                        'icon' => 'User',
-                        'isActive' => request()->is('instructor/profile*')
-                    ],
-                    [
-                        'type' => 'item',
-                        'title' => 'Notifications',
-                        'url' => '/instructor/notifications',
+                        'label' => 'Notifications',
+                        'href' => '/notifications',
                         'icon' => 'Bell',
                         'badge' => $this->getUnreadNotificationCount($user),
-                        'isActive' => request()->is('instructor/notifications*')
+                        'isActive' => request()->is('notifications*')
+                    ],
+                    [
+                        'type' => 'item',
+                        'label' => 'Settings',
+                        'href' => '/settings',
+                        'icon' => 'Settings',
+                        'isActive' => request()->is('settings*')
                     ]
                 ]
             ]
@@ -298,7 +252,7 @@ class SidebarMenuService
     /**
      * Build student menu structure.
      *
-     * @param  \App\Models\User  $user
+     * @param User $user
      * @return array
      */
     protected function buildStudentMenu(User $user): array
@@ -306,54 +260,34 @@ class SidebarMenuService
         return [
             [
                 'type' => 'group',
-                'title' => 'Student Dashboard',
+                'label' => 'Learning',
                 'items' => [
                     [
                         'type' => 'item',
-                        'title' => 'Overview',
-                        'url' => '/student/dashboard',
+                        'label' => 'Dashboard',
+                        'href' => '/student/dashboard',
                         'icon' => 'LayoutDashboard',
-                        'isActive' => request()->is('student/dashboard')
+                        'isActive' => request()->is('student/dashboard*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'My Progress',
-                        'url' => '/student/progress',
-                        'icon' => 'TrendingUp',
-                        'isActive' => request()->is('student/progress*')
-                    ]
-                ]
-            ],
-            [
-                'type' => 'group',
-                'title' => 'Learning',
-                'items' => [
-                    [
-                        'type' => 'item',
-                        'title' => 'My Courses',
-                        'url' => '/student/courses',
-                        'icon' => 'BookOpen',
+                        'label' => 'Continue Learning',
+                        'href' => '/student/courses',
+                        'icon' => 'Play',
+                        'badge' => $this->getIncompleteCourseCount($user),
                         'isActive' => request()->is('student/courses*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Browse Courses',
-                        'url' => '/courses',
+                        'label' => 'Browse Courses',
+                        'href' => '/courses',
                         'icon' => 'Search',
                         'isActive' => request()->is('courses*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Wishlist',
-                        'url' => '/student/wishlist',
-                        'icon' => 'Heart',
-                        'badge' => $this->getWishlistCount($user),
-                        'isActive' => request()->is('student/wishlist*')
-                    ],
-                    [
-                        'type' => 'item',
-                        'title' => 'Certificates',
-                        'url' => '/student/certificates',
+                        'label' => 'My Certificates',
+                        'href' => '/student/certificates',
                         'icon' => 'Award',
                         'isActive' => request()->is('student/certificates*')
                     ]
@@ -361,50 +295,58 @@ class SidebarMenuService
             ],
             [
                 'type' => 'group',
-                'title' => 'Community',
+                'label' => 'Community',
                 'items' => [
                     [
                         'type' => 'item',
-                        'title' => 'Forums',
-                        'url' => '/forums',
+                        'label' => 'Discussion Forum',
+                        'href' => '/forum',
                         'icon' => 'MessageSquare',
-                        'badge' => $this->getForumNotificationCount($user),
-                        'isActive' => request()->is('forums*')
+                        'badge' => $this->getUnreadForumReplies($user),
+                        'isActive' => request()->is('forum*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Study Groups',
-                        'url' => '/study-groups',
+                        'label' => 'Study Groups',
+                        'href' => '/student/groups',
                         'icon' => 'Users',
-                        'isActive' => request()->is('study-groups*')
+                        'isActive' => request()->is('student/groups*')
                     ]
                 ]
             ],
             [
                 'type' => 'group',
-                'title' => 'Account',
+                'label' => 'Personal',
                 'items' => [
                     [
                         'type' => 'item',
-                        'title' => 'Profile',
-                        'url' => '/student/profile',
-                        'icon' => 'User',
-                        'isActive' => request()->is('student/profile*')
+                        'label' => 'Wishlist',
+                        'href' => '/student/wishlist',
+                        'icon' => 'Heart',
+                        'badge' => $this->getWishlistCount($user),
+                        'isActive' => request()->is('student/wishlist*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Purchase History',
-                        'url' => '/student/purchases',
-                        'icon' => 'CreditCard',
+                        'label' => 'Purchase History',
+                        'href' => '/student/purchases',
+                        'icon' => 'ShoppingBag',
                         'isActive' => request()->is('student/purchases*')
                     ],
                     [
                         'type' => 'item',
-                        'title' => 'Notifications',
-                        'url' => '/student/notifications',
+                        'label' => 'Notifications',
+                        'href' => '/notifications',
                         'icon' => 'Bell',
                         'badge' => $this->getUnreadNotificationCount($user),
-                        'isActive' => request()->is('student/notifications*')
+                        'isActive' => request()->is('notifications*')
+                    ],
+                    [
+                        'type' => 'item',
+                        'label' => 'Settings',
+                        'href' => '/settings',
+                        'icon' => 'Settings',
+                        'isActive' => request()->is('settings*')
                     ]
                 ]
             ]
@@ -412,7 +354,7 @@ class SidebarMenuService
     }
 
     /**
-     * Get count of pending courses for approval.
+     * Get count of pending course approvals.
      *
      * @return int
      */
@@ -422,44 +364,21 @@ class SidebarMenuService
     }
 
     /**
-     * Get count of pending instructors for approval.
+     * Get count of pending instructor approvals.
      *
      * @return int
      */
     protected function getPendingInstructorCount(): int
     {
         return User::where('role', 'instructor')
-                  ->where('is_approved', false)
-                  ->count();
-    }
-
-    /**
-     * Get count of pending payouts.
-     *
-     * @return int
-     */
-    protected function getPendingPayoutCount(): int
-    {
-        // This would be implemented based on your payout system
-        // For now, returning 0 as placeholder
-        return 0;
-    }
-
-    /**
-     * Get count of unread notifications for a user.
-     *
-     * @param  \App\Models\User  $user
-     * @return int
-     */
-    protected function getUnreadNotificationCount(User $user): int
-    {
-        return $user->notifications()->where('read', false)->count();
+            ->where('is_approved', false)
+            ->count();
     }
 
     /**
      * Get count of unread reviews for an instructor.
      *
-     * @param  \App\Models\User  $user
+     * @param User $user
      * @return int
      */
     protected function getUnreadReviewCount(User $user): int
@@ -470,54 +389,91 @@ class SidebarMenuService
     }
 
     /**
-     * Get count of unread messages for a user.
+     * Get count of incomplete courses for a student.
      *
-     * @param  \App\Models\User  $user
+     * @param User $user
+     * @return int
+     */
+    protected function getIncompleteCourseCount(User $user): int
+    {
+        return Enrollment::where('student_id', $user->id)
+            ->where('status', 'active')
+            ->count();
+    }
+
+    /**
+     * Get count of unread forum replies for a user.
+     *
+     * @param User $user
+     * @return int
+     */
+    protected function getUnreadForumReplies(User $user): int
+    {
+        return Notification::where('user_id', $user->id)
+            ->where('type', 'forum_reply')
+            ->where('read', false)
+            ->count();
+    }
+
+    /**
+     * Get count of pending payouts (placeholder).
+     *
+     * @return int
+     */
+    protected function getPendingPayoutCount(): int
+    {
+        // Placeholder - implement when payout system is ready
+        return 0;
+    }
+
+    /**
+     * Get count of unread messages for an instructor (placeholder).
+     *
+     * @param User $user
      * @return int
      */
     protected function getUnreadMessageCount(User $user): int
     {
-        // This would be implemented based on your messaging system
-        // For now, returning 0 as placeholder
-        return 0;
+        return Notification::where('user_id', $user->id)
+            ->where('type', 'direct_message')
+            ->where('read', false)
+            ->count();
     }
 
     /**
-     * Get count of items in wishlist for a student.
+     * Get count of wishlist items for a student (placeholder).
      *
-     * @param  \App\Models\User  $user
+     * @param User $user
      * @return int
      */
     protected function getWishlistCount(User $user): int
     {
-        // This would be implemented based on your wishlist system
-        // For now, returning 0 as placeholder
+        // Placeholder - implement when wishlist system is ready
         return 0;
     }
 
     /**
-     * Get count of forum notifications for a student.
+     * Get count of unread notifications for a user.
      *
-     * @param  \App\Models\User  $user
+     * @param User $user
      * @return int
      */
-    protected function getForumNotificationCount(User $user): int
+    protected function getUnreadNotificationCount(User $user): int
     {
-        return $user->notifications()
-                   ->where('type', 'forum_reply')
-                   ->where('read', false)
-                   ->count();
+        return Notification::where('user_id', $user->id)
+            ->where('read', false)
+            ->count();
     }
 
     /**
-     * Clear cached menu for a user.
+     * Clear the sidebar menu cache for a specific user.
      *
-     * @param  \App\Models\User  $user
+     * @param User $user
      * @return void
      */
     public function clearCache(User $user): void
     {
-        $cacheKey = "sidebar_menu_{$user->id}_{$user->role}";
+        $cacheKey = "sidebar_menu_user_{$user->id}";
         Cache::forget($cacheKey);
     }
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { usePage } from '@inertiajs/react';
 import { type SharedData } from '@/types';
 import { useEcho } from '@/hooks/use-echo';
@@ -18,12 +18,14 @@ import { NavUser } from '@/components/nav-user';
 import { Link } from '@inertiajs/react';
 import { Badge } from '@/components/ui/badge';
 import * as LucideIcons from 'lucide-react';
+import { setupUserEchoListeners, cleanupEchoListeners } from '@/lib/echo';
+import axios from 'axios';
 
 // Define types for our menu structure
 interface MenuItem {
     type: 'item';
-    title: string;
-    url: string;
+    label: string;
+    href: string;
     icon: string;
     badge?: number;
     isActive?: boolean;
@@ -31,7 +33,7 @@ interface MenuItem {
 
 interface MenuGroup {
     type: 'group';
-    title: string;
+    label: string;
     items: MenuItem[];
 }
 
@@ -44,9 +46,9 @@ function useSidebarMenu() {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Computed properties (equivalent to Vue's computed)
-    const hasMenuItems = menuItems.length > 0;
-    const isEmpty = !loading && menuItems.length === 0;
+    // Computed properties (equivalent to Vue's computed) - using useMemo for better performance
+    const hasMenuItems = useMemo(() => menuItems.length > 0, [menuItems]);
+    const isEmpty = useMemo(() => !loading && menuItems.length === 0, [loading, menuItems]);
 
     // Methods (equivalent to Vue's methods)
     const fetchMenuData = useCallback(async () => {
@@ -54,25 +56,18 @@ function useSidebarMenu() {
             setLoading(true);
             setError(null);
             
-            const response = await fetch('/api/sidebar-menu', {
-                method: 'GET',
+            const response = await axios.get('/api/sidebar-menu', {
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-                credentials: 'same-origin',
+                withCredentials: true,
             });
 
-            if (!response.ok) {
-                throw new Error(`Failed to fetch menu: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-            
-            if (result.success) {
-                setMenuItems(result.data || []);
+            if (response.data.success) {
+                setMenuItems(response.data.data || []);
             } else {
-                throw new Error(result.message || 'Failed to load menu items');
+                throw new Error(response.data.message || 'Failed to load menu items');
             }
         } catch (err) {
             console.error('Error fetching sidebar menu:', err);
@@ -153,40 +148,56 @@ export function DynamicSidebar() {
         fetchMenuData
     } = useSidebarMenu();
 
-    if (!user) {
-        return null;
-    }
-
-    const getRoleEmoji = () => {
+    // Role-based computed values (equivalent to Vue's computed)
+    const roleEmoji = useMemo(() => {
+        if (!user) return '🎓';
         switch (user.role) {
             case 'admin': return '🛡️';
             case 'instructor': return '👨‍🏫';
             case 'student': default: return '🎓';
         }
-    };
+    }, [user]);
 
-    const getRoleTitle = () => {
+    const roleTitle = useMemo(() => {
+        if (!user) return 'Student Portal';
         switch (user.role) {
             case 'admin': return 'Admin Panel';
             case 'instructor': return 'Instructor Hub';
             case 'student': default: return 'Student Portal';
         }
-    };
+    }, [user]);
 
+    // Setup Echo listeners for real-time updates (equivalent to Vue's onMounted)
+    useEffect(() => {
+        if (user) {
+            setupUserEchoListeners(user.id);
+            
+            // Cleanup on unmount (equivalent to Vue's onUnmounted)
+            return () => {
+                cleanupEchoListeners(user.id);
+            };
+        }
+    }, [user]);
+
+    if (!user) {
+        return null;
+    }
+
+    // Render methods - using regular functions to avoid conditional hook issues
     const renderMenuItem = (item: MenuItem) => {
         const IconComponent = resolveIcon(item.icon);
         
         return (
-            <SidebarMenuItem key={`${item.url}-${item.title}`}>
+            <SidebarMenuItem key={`${item.href}-${item.label}`}>
                 <SidebarMenuButton asChild>
                     <Link 
-                        href={item.url}
+                        href={item.href}
                         className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 ${
                             item.isActive ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300' : ''
                         }`}
                     >
                         <IconComponent className="w-4 h-4 flex-shrink-0" />
-                        <span className="flex-1 truncate">{item.title}</span>
+                        <span className="flex-1 truncate">{item.label}</span>
                         {item.badge && item.badge > 0 && (
                             <Badge 
                                 variant="default" 
@@ -202,9 +213,9 @@ export function DynamicSidebar() {
     };
 
     const renderMenuGroup = (group: MenuGroup) => (
-        <SidebarGroup key={group.title}>
+        <SidebarGroup key={group.label}>
             <SidebarGroupLabel className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide px-3">
-                {group.title}
+                {group.label}
             </SidebarGroupLabel>
             <SidebarGroupContent>
                 <SidebarMenu>
@@ -222,11 +233,11 @@ export function DynamicSidebar() {
                         <SidebarMenuButton size="lg" asChild>
                             <Link href="/dashboard" className="flex items-center space-x-3 p-2">
                                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                                    {getRoleEmoji()}
+                                    {roleEmoji}
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="font-bold text-gray-900 dark:text-white">EduPlatform</span>
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">{getRoleTitle()}</span>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">{roleTitle}</span>
                                 </div>
                             </Link>
                         </SidebarMenuButton>

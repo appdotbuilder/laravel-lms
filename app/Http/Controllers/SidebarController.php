@@ -4,43 +4,39 @@ namespace App\Http\Controllers;
 
 use App\Services\SidebarMenuService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class SidebarController extends Controller
 {
     /**
-     * The sidebar menu service instance.
-     */
-    protected SidebarMenuService $sidebarMenuService;
-
-    /**
      * Create a new controller instance.
-     *
-     * @param  \App\Services\SidebarMenuService  $sidebarMenuService
      */
-    public function __construct(SidebarMenuService $sidebarMenuService)
-    {
-        $this->sidebarMenuService = $sidebarMenuService;
-    }
+    public function __construct(
+        private SidebarMenuService $sidebarMenuService
+    ) {}
 
     /**
-     * Display the sidebar menu for the authenticated user.
+     * Get the sidebar menu items for the authenticated user.
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @param Request $request
+     * @return JsonResponse
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         try {
             $menuItems = $this->sidebarMenuService->getMenuItems();
 
             return response()->json([
                 'success' => true,
-                'data' => $menuItems
+                'data' => $menuItems,
+                'message' => 'Sidebar menu loaded successfully'
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load menu items',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'data' => [],
+                'message' => 'Failed to load sidebar menu',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }

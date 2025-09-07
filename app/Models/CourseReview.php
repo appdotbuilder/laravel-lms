@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $rating
  * @property string|null $review
  * @property bool $approved
+ * @property bool $instructor_read
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * 
@@ -30,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder|CourseReview whereRating($value)
  * @method static \Illuminate\Database\Eloquent\Builder|CourseReview whereReview($value)
  * @method static \Illuminate\Database\Eloquent\Builder|CourseReview whereApproved($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|CourseReview whereInstructorRead($value)
  * @method static \Illuminate\Database\Eloquent\Builder|CourseReview whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|CourseReview whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|CourseReview approved()
@@ -52,6 +54,7 @@ class CourseReview extends Model
         'rating',
         'review',
         'approved',
+        'instructor_read',
     ];
 
     /**
@@ -61,6 +64,7 @@ class CourseReview extends Model
      */
     protected $casts = [
         'approved' => 'boolean',
+        'instructor_read' => 'boolean',
     ];
 
     /**
